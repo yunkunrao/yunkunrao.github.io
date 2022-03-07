@@ -1,37 +1,35 @@
-## Welcome to Yunkun's GitHub Pages
+# KVMTOOL
 
-You can use the [editor on GitHub](https://github.com/yunkunrao/yunkunrao.github.io/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+1.下载linux并编译linux内核源码
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+```shell
+wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.229.tar.xz
+tar -xf linux-4.9.229.tar.xz
+cd linux-4.9.229.tar.xz
+make defconfig
+# (optional) 自定义配置.config
+make -j10
 
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+2.编译busybox
 
-### Jekyll Themes
+```shell
+wget https://busybox.net/downloads/busybox-1.32.0.tar.bz2
+tar -xf busybox-1.32.0.tar.bz2
+cd busybox-1.32.0
+make menu_config
+```
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/yunkunrao/yunkunrao.github.io/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+<img width="1341" alt="image" src="https://user-images.githubusercontent.com/20353538/157057259-41dde3ca-e128-4ccf-9172-85d6b86a73b9.png">
 
-### Support or Contact
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+3.准备一个initrd
+
+4.启动虚拟机
+
+
+## 参考文档
+- https://github.com/kvmtool/kvmtool
+- https://blog.csdn.net/caojinhuajy/article/details/119277087
+- https://www.bilibili.com/read/cv7118525
