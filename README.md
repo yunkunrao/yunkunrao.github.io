@@ -1,3 +1,12 @@
+# BPF 珠玑
+
+- https://www.brendangregg.com/perf.html
+- https://www.ebpf.top/post/bpf_learn_path/
+- http://arthurchiao.art/blog/ebpf-and-k8s-zh/
+- http://arthurchiao.art/blog/understanding-ebpf-datapath-in-cilium-zh/
+- http://arthurchiao.art/blog/advanced-bpf-kernel-features-for-container-age-zh/
+- http://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service-zh/
+
 # KVMTOOL 🐂刀小试
 
 ## 1. 下载linux并编译linux内核源码
