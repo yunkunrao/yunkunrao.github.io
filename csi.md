@@ -169,3 +169,4 @@ service Node {
 - [详解 Kubernetes Volume 的实现原理](https://draveness.me/kubernetes-volume/)
 - [CSI存储接口解释](https://www.dazhuanlan.com/2020/01/31/5e33a33ba05d1/)
 - https://silenceper.com/kubernetes-book/csi/
+- https://github.com/kubernetes/design-proposals-archive/blob/main/storage/container-storage-interface.md
