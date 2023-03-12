@@ -19,7 +19,7 @@
 
 ## 组件
 
-![CSI调用说明](https://silenceper.oss-cn-beijing.aliyuncs.com/images/1*bkMOGMuyCYXH8ZyR5Tngig.png)
+![CSI调用说明](https://raw.githubusercontent.com/kubernetes/design-proposals-archive/main/storage/container-storage-interface_diagram1.png)
 
 
 
