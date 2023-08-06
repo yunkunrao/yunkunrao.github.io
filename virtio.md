@@ -119,4 +119,6 @@ Virtio 是一套 I/O 半虚拟化的程序，是对半虚拟化 Hypervisor 中�
 
 客户机驱动（前端）与hypervisor（后端）通过缓冲区进行通信。对于一次I/O，客户机提供一个或多个缓冲区表示请求。
 
+# 参考文献
 
+- http://blog.vmsplice.net/2011/09/qemu-internals-vhost-architecture.html
