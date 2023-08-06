@@ -40,3 +40,45 @@ vhost 与 kvm 的事件通信通过 eventfd 机制来实现，主要包括两个
 - 一个是 guest 到 vhost 方向的 kick event，通过 ioeventfd 实现
 - 另一个是 vhost 到 guest 方向的 call event，通过 irqfd 实现
 
+# Virtio：一种 I/O 半虚拟化框架
+
+Virtio 是一套 I/O 半虚拟化的程序，是对半虚拟化 Hypervisor 中的一组通用 I/O 设备（如网络设备、块设备等）的抽象，为各种 I/O 设备 的虚拟化提供了通用的、标准化的前端接口，增加了各个虚拟化平台的代码复用。
+
+## Virtio 架构
+
+除了 Front-end drivers 和 Back-end Drivers 之外，Virtio 还定义了两层来支持虚拟机与 Hypervisor 进行通讯，Virtio 四层如下：
+
+- Front-end层 guest 中各种驱动程序模块
+- virtio层 是 虚拟队列（virtual queue） 接口，它是 前端驱动程序 和 后端驱动程序 通信的桥梁。驱动程序可以根据需要使用零个或多个队列。例如：
+  virtio-net 网络驱动程序使用两个虚拟队列(一个用于接收，一个用于发送)
+  virtio-blk 块驱动程序只使用一个队列
+- virtio-ring层 是 virtio层 的具体实现，它实现了两个环形缓冲区，分别用于保存前端驱动程序和后端处理程序执行的信息。virtio-ring 实现了 virtio 的具体 通信机制 和 数据流程
+  - 虚拟队列（virtual queue）是虚拟的，它实际上被实现为一个环（rings），用于遍历 guest-to-hypervisor 过渡。它也可以以其他方式实现，只要guest和  hypervisor以相同的方式实现即可
+  - virtio 的核心机制就是通过共享内存在前端驱动与后端实现间进行数据传输，共享内存区域被称作 vring
+- Back-end Hypervisor（实现在Qemu上）中的处理程序模块
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/2878094e-b1d3-417a-9a7c-5c17f58afa46)
+
+上图，列出五个前端驱动程序：
+
+- virtio-blk （如磁盘）
+- virtio-net 网络设备
+- virtio-pci PCI模拟
+- virtio-balloon （用于动态管理客户内存使用）
+- virtio-console 控制台
+
+每个前端驱动程序在hypervisor中都有一个对应的后端驱动程序。
+
+## 层次结构概念
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/c8062b20-265d-42cf-a6d2-f47a538ca801)
+
+- virtio_driver表示客户机中的前端驱动。与驱动相匹配的设备被封装在virtio_device（在客户机中表示设备），其中有成员config指向virtio_config_ops结构（其中定义了配置virtio设备的操作）
+- virtqueue 中有成员vdev指向virtio_device（也就是指向它所服务的某一设备virtio_device）
+- 每个virtio_queue中有个类型为virtqueue_ops的对象，其中定义了与hypervisor交互的虚拟队列操作
+
+## vring 组成
+
+客户机驱动（前端）与hypervisor（后端）通过缓冲区进行通信。对于一次I/O，客户机提供一个或多个缓冲区表示请求。
+
+
