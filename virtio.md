@@ -1,3 +1,34 @@
+# 虚拟化模型
+
+当前主流的虚拟化技术的实现架构可分为三类：
+
+1. Hypervisor模型
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/dc06f2ce-8c62-46bf-9e92-0a68d15b23b8)
+
+这种方式是比较高效的，然而I/O设备种类繁多，管理所有设备就意味着大量的驱动开发工作。在实际的产品中，厂商会根据产品定位，有选择的支持一些I/O设备，而不是对所有的I/O设备都提供支持。
+
+2. Host模型（宿主机）
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/bd9bf652-b21f-4fa0-abcf-3cf2c2c4a173)
+
+Host模型最大的优点就是可以充分利用现有操作系统的设备驱动程序，VMM不需要为各种I/O设备重新实现驱动，可以专注于物理资源的虚拟化；缺点在于，由于VMM是借助host OS的服务来操作硬件，而不是直接操作硬件，因此受限于host OS服务的支持，可能导致硬件利用的不充分。
+
+从架构上看，由Qumranet公司开发的KVM（Kernel-based Virtual Machine）就是属于host模型的，kernel-based，顾名思义就是基于操作系统内核。KVM于2007年被集成到Linux内核2.6.20版本，并于2008年被Red Hat收购。
+
+随着越来越多的虚拟化功能被加入到Linux内核当中，Linux已经越来越像一个hypervisor了，从这个角度看，KVM也可以算是hypervisor模型了。
+
+3. 混合模型
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/de521324-ee63-48d9-8d55-3af6267304ab)
+
+
+混合模型可以说是结合了上述两种模型的优点，既不需要另外开发I/O设备驱动程序，又可以通过直接控制CPU和内存实现对这些物理资源的充分利用，以提高效率。
+
+但它也是存在缺点的，当来自guest OS的I/O请求发送到VMM后，VMM需要将这些请求转发到service OS，这无疑增加了上下文的开销。混合模型的代表有Xen，Intel最近推出的Acrn，以及我国工程师写的minos。
+
+**还有一种划分方法是将VMM分为基于bare-metal的type-1和基于OS的type-2，从这个角度划分的话，hypervisor模型和混合模型都是属于type-1的，host模型则是属于type-2的【1】。**
+
 # virtio-net 架构图
 
 virtio-net 一套网络半虚拟化驱动 + 设备的方案。
