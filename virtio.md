@@ -238,3 +238,4 @@ struct virtq_used_elem {
 # 参考文献
 
 - http://blog.vmsplice.net/2011/09/qemu-internals-vhost-architecture.html
+- https://www.redhat.com/en/blog/virtqueues-and-virtio-ring-how-data-travels
