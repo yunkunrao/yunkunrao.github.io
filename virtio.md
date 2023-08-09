@@ -234,8 +234,106 @@ struct virtq_used_elem {
 - ⑧ 表示将 avail ring 中的描述符索引值进行更新；
 - ⑨ 与 ⑩ 表示 driver 通知 device 有新的可用描述符；
 
+# Linux虚拟化KVM-Qemu分析之ioeventfd与irqfd
+
+## 1. 概述
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/18b15ae8-4203-4d46-8fff-2a2d91814acd)
+
+Guest与KVM及Qemu之间的通知机制，如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/45f778d7-68b5-4e0a-95df-aaab951abb6f)
+
+- irqfd：提供一种机制，可以通过文件描述fd来向Guest注入中断，路径为紫色线条所示；
+- ioeventfd：提供一种机制，可以通过文件描述符fd来接收Guest的信号，路径为红色线条所示；
+- eventfd和irqfd这两种机制，都是基于eventfd来实现的；
+
+本文会先介绍eventfd机制，然后再分别从Qemu/KVM来介绍ioeventfd和irqfd，开始吧。
+
+## 2. eventfd
+
+eventfd的机制比较简单，大体框架如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/77466a81-e6b5-45b1-84f4-01695b603d6c)
+
+- 内核中创建了一个struct eventfd_ctx结构体，该结构体中维护一个count计数，以及一个等待队列头；
+- 线程/进程在读eventfd时，如果count值等于0时，将当前任务添加到等待队列中，并进行调度，让出CPU。读过程count值会进行减操作；
+- 线程/进程在写eventfd时，如果count值超过最大值时，会将当前任务添加到等待队列中（特殊情况），写过程count值会进行加操作，并唤醒在等待队列上的任务；
+- 内核的其他模块也可以通过eventfd_signal接口，将count值加操作，并唤醒在等待队列上的任务；
+
+代码实现如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/f19993bf-7cee-435b-9b09-e633a43468b0)
+
+- eventfd_read：如果count值为0，将自身添加到等待队列中，设置任务的状态后调用schedule让出CPU，等待被唤醒。读操作中会对count值进行减操作，最后再判断等待队列中是否有任务，有则进行唤醒；
+
+- eventfd_write：判断count值在增加ucnt后是否会越界，越界则将自身添加到等待队列中，设置任务的状态后调用schedule让出CPU，等待被唤醒。写操作会对count值进行加操作，最后再判断等待队列中是否有任务，有则进行唤醒；
+
+- 此外，还有eventfd_signal接口，比较简单，完成的工作就是对count值进行加操作，并唤醒等待任务；
+
+## 3. ioeventfd
+
+### 3.1 Qemu侧
+
+以PCI设备为例：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/bc3b70b3-86d1-437a-8ecb-711e00514abd)
+
+- Qemu中模拟PCI设备时，在初始化过程中会调用memory_region_init_io来进行IO内存空间初始化，这个过程中会绑定内存区域的回调函数集，当Guest OS访问这个IO区域时，可能触发这些回调函数的调用；
+- Guest OS中的Virtio驱动配置完成后会将状态位置上VIRTIO_CONFIG_S_DRIVER_OK，此时Qemu中的操作函数调用virtio_pci_common_write，并按图中的调用流逐级往下；
+- event_notifier_init：完成eventfd的创建工作，它实际上就是调用系统调用eventfd()的接口，得到对应的文件描述符；
+- memory_region_add_eventfd：为内存区域添加eventfd，将eventfd和对应的内存区域关联起来；
+
+看一下memory_region_add_eventfd的流程：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/eeccd81b-1ea7-450d-92b8-8ee16240effe)
+
+- 内存区域MemoryRegion中的ioeventfds成员按照地址从小到大排序，memory_region_add_eventfd函数会选择合适的位置将ioeventfds插入，并提交更新；
+- 提交更新过程中最终触发回调函数kvm_mem_ioeventfd_add的执行，这个函数指针的初始化是在Qemu进行kvm_init时，针对不同类型的内存区域注册了对应的memory_listener用于监听变化；
+- kvm_vm_ioctl：向KVM注册ioeventfd；
+
+Qemu中完成了初始化后，任务就转移到了KVM中。
+
+### 3.2 KVM侧
+
+KVM中的ioeventfd注册如下：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/45fb819a-cb00-4479-9366-d15270b399bf)
+
+- KVM中注册ioeventfd的核心函数为kvm_assign_ioeventfd_idx，该函数中主要工作包括：
+1）根据用户空间传递过来的fd获取到内核中对应的struct eventfd_ctx结构体上下文；
+2）使用ioeventfd_ops操作函数集来初始化IO设备操作；
+3）向KVM注册IO总线，比如KVM_MMIO_BUS，注册了一段IO地址区域，当操作这段区域的时候出发对应的操作函数回调；
+
+- 当Guest OS中进行IO操作时，触发VM异常退出，KVM进行捕获处理，最终调用注册的ioevnetfd_write，在该函数中调用eventfd_signal唤醒阻塞在eventfd上的任务，Qemu和KVM完成了闭环；
+
+总体效果如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/6d6238b7-2f48-42ad-bfa2-0c05a5f7fc19)
+
+### 4. irqfd
+
+Qemu和KVM中的流程如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/a7aa1beb-6ea1-48d1-93a3-1278905a0b4e)
+
+- Qemu中通过kvm_irqchip_assign_irqfd向KVM申请注册irqfd；
+- 在KVM中，内核通过维护struct kvm_kernel_irqfd结构体来管理整个irqfd的流程；
+- kvm_irqfd_assign：
+1）分配struct kvm_kernel_irqfd结构体，并进行各个字段的初始化；
+2）初始化工作队列任务，设置成irqfd_inject，用于向Guest OS注入虚拟中断；
+3）初始化等待队列的唤醒函数，设置成irqfd_wakeup，当任务被唤醒时执行，在该函数中会去调度工作任务irqfd_inject；
+4）初始化pll_table pt字段的处理函数，设置成irqfd_ptable_queue_proc，该函数实际是调用add_wait_queue将任务添加至eventfd的等待队列中，这个过程是在vfs_poll中完成的；
+- 当Qemu通过irqfd机制发送信号时，将唤醒睡眠在eventfd上的任务，唤醒后执行irqfd_wakeup函数，在该函数中调度任务，调用irqfd_inject来注入中断；
+
+总体效果如下图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/a6b0aed3-844f-4f78-9973-4fdd3e2cc478)
+
+
 
 # 参考文献
 
 - http://blog.vmsplice.net/2011/09/qemu-internals-vhost-architecture.html
 - https://www.redhat.com/en/blog/virtqueues-and-virtio-ring-how-data-travels
+- https://mp.weixin.qq.com/s/9Zv7XcsvlVwDDjTn85-SZQ
