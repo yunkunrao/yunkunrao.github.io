@@ -8,3 +8,7 @@ export C_INCLUDE_PATH=/Library/Developer/CommandLineTools/Library/Frameworks/Pyt
 pip install cinderlib
 ```
 
+## ember 架构
+
+<img width="846" alt="image" src="https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/45cf003b-6ae8-4bb6-9ba8-647970902119">
+
