@@ -10,6 +10,7 @@ pip install cinderlib
 
 ## ember 架构
 
-<img width="1131" alt="image" src="https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/cf89cfca-ebaf-4c01-95a6-1588ecc9a413">
+<img width="1116" alt="image" src="https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/2841e4e6-3bb3-4978-90f8-cbf607632463">
+
 
 
