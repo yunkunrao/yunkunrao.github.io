@@ -237,3 +237,29 @@ Linux PCI驱动框架，基于Linux设备驱动模型，因此有必要先简要
 
 实际的过程也是比较简单，无非就是进行匹配，一旦匹配上了，直接调用驱动程序的probe函数，写过驱动的同学应该就比较清楚后边的流程了；
 
+### 4.4 枚举
+
+- 我们还是顺着设备驱动匹配的思路继续开展；
+- 3.2节描述的是总线的创建，那么本节中的枚举，显然就是设备的创建了；
+- 所谓设备的创建，就是在Linux内核中维护一些数据结构来对硬件设备进行描述，而硬件的描述又跟上文中的数据结构能对应上；
+
+枚举的入口函数：pci_host_probe
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/ba59e058-8dae-48d7-964e-84da872c7880)
+
+- 设备的扫描从pci_scan_root_bus_bridge开始，首先需要先向系统注册一个host bridge，在注册的过程中需要创建一个root bus，也就是bus 0，在pci_register_host_bridge函数中，主要是一系列的初始化和注册工作，此外还为总线分配资源，包括地址空间等；
+- pci_scan_child_bus开始，从bus 0向下扫描并添加设备，这个过程由pci_scan_child_bus_extend来完成；
+- 从pci_scan_child_bus_extend的流程可以看出，主要有两大块：
+  - PCI设备扫描，从循环也能看出来，每条总线支持32个设备，每个设备支持8个功能，扫描完设备后将设备注册进系统，pci_scan_device的过程中会去读取PCI设备的配置空间，获取到BAR的相关信息，细节不表了；
+  - PCI桥设备扫描，PCI桥是用于连接上一级PCI总线和下一级PCI总线的，当发现有下一级总线时，创建子结构，并再次调用pci_scan_child_bus_extend的函数来扫描下一级的总线，从这个过程看，就是一个递归过程。
+- 从设备的扫描过程看，这是一个典型的DFS（Depth First Search）过程，熟悉数据结构与算法的同学应该清楚，这就类似典型的走迷宫的过程；
+
+如果你对上述的流程还不清楚，再来一张图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/f34f999e-82ea-44d6-9b50-ee4c0e22e065)
+
+- 图中的数字代表的就是扫描的过程，当遍历到PCI桥设备的时候，会一直穷究到底，然后再返回来；
+- 当枚举过程结束后，系统中就已经维护了PCI设备的各类信息了，在设备驱动匹配模型中，总线和设备都已经具备了，剩下的就是写个驱动了；
+
+
+
