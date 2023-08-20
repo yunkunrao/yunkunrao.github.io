@@ -186,5 +186,54 @@ PCIe规范定义了分层的架构设计，包含三层：
 - 扩展后的区域将使用MMIO的方式进行访问；
  
 
+## 4. 数据结构
 
+### 4.1 PCI总线拓扑
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/47702d44-0f0c-456c-94bf-799fd339c776)
+
+- PCI体系结构的拓扑关系如图所示，而图中的不同数据结构就是用于来描述对应的模块；
+- Host Bridge连接CPU和PCI系统，由struct pci_host_bridge描述；
+- struct pci_dev描述PCI设备，以及PCI-to-PCI桥设备；
+- struct pci_bus用于描述PCI总线，struct pci_slot用于描述总线上的物理插槽；
+
+来一张更详细的结构体组织图：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/bbe8d288-7c35-4af7-81ac-f9e3869ada7c)
+
+- 总体来看，数据结构对硬件模块进行了抽象，数据结构之间也能很便捷的构建一个类似PCI子系统物理拓扑的关系图；
+- 顶层的结构为pci_host_bridge，这个结构一般由Host驱动负责来初始化创建；
+- pci_host_bridge指向root bus，也就是编号为0的总线，在该总线下，可以挂接各种外设或物理slot，也可以通过PCI桥去扩展总线；
+
+### 4.2 设备驱动模型
+
+Linux PCI驱动框架，基于Linux设备驱动模型，因此有必要先简要介绍一下，实际上Linux设备驱动模型也是一个大的topic，先挖个坑，有空再来填。来张图吧：
+
+
+- 简单来说，Linux内核建立了一个统一的设备模型，分别采用总线、设备、驱动三者进行抽象，其中设备与驱动都挂在总线上，当有新的设备注册或者新的驱动注册时，总线会去进行匹配操作（match函数），当发现驱动与设备能进行匹配时，就会执行probe函数的操作；
+- 从数据结构中可以看出，bus_type会维护两个链表，分别用于挂接向其注册的设备和驱动，而match函数就负责匹配检测；
+- 各类驱动框架也都是基于图中的机制来实现，在这之上进行封装，比如I2C总线框架等；
+- 设备驱动模型中，包含了很多kset/kobject等内容，建议去看看之前的文章《linux设备模型之kset/kobj/ktype分析》
+
+### 4.3 初始化
+
+既然说到了设备驱动模型，那么首先我们要做的事情，就是先在内核里边创建一个PCI总线，用于挂接PCI设备和PCI驱动，我们的实现来到了pci_driver_init()函数：
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/8a87ce02-b732-483c-93e0-72470f2a8171)
+
+内核在PCI框架初始化时会调用pci_driver_init()来创建一个PCI总线结构（全局变量pci_bus_type），这里描述的PCI总线结构，是指驱动匹配模型中的概念，PCI的设备和驱动都会挂在该PCI总线上；
+从pci_bus_type的函数操作接口也能看出来，pci_bus_match用来检查设备与驱动是否匹配，一旦匹配了就会调用pci_device_probe函数，下边针对这两个函数稍加介绍；
+
+#### 4.3.1 pci_bus_match
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/1b463ccf-e40e-4343-b200-beabf4405891)
+
+设备或者驱动注册后，触发pci_bus_match函数的调用，实际会去比对vendor和device等信息，这个都是厂家固化的，在驱动中设置成PCI_ANY_ID就能支持所有设备；
+一旦匹配成功后，就会去触发pci_device_probe的执行；
+
+#### 4.3.2 pci_device_probe
+
+![image](https://github.com/yunkunrao/yunkunrao.github.io/assets/20353538/ae097ab0-f34d-4dc5-abfd-3c7feee6b405)
+
+实际的过程也是比较简单，无非就是进行匹配，一旦匹配上了，直接调用驱动程序的probe函数，写过驱动的同学应该就比较清楚后边的流程了；
 
