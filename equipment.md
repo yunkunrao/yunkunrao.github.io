@@ -1,0 +1,1 @@
+- https://blog.toshima.ru/2022/06/23/enable-option-arrow-key-in-zsh.html
